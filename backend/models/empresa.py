@@ -14,6 +14,9 @@ class Empresa(SQLModel, table=True):
     direccion: str
     estado: str
 
+ # Contraseña de acceso de la empresa al sistema
+    contrasena: Optional[str] = None
+ 
 
 class BaseDeDatosEmpresa(SQLModel, table=True):
     __tablename__ = "base_de_datos_empresa"

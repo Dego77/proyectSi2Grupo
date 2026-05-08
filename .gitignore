@@ -1,24 +1,75 @@
-# Entorno virtual
-backend/venv/
-venv/
+# ============================================================
+# PYTHON / FASTAPI
+# ============================================================
 
-# Python cache
+# Entornos virtuales
+venv/
+.venv/
+backend/venv/
+backend/.venv/
+
+# Cache de Python
 __pycache__/
+*/__pycache__/
+**/__pycache__/
 *.pyc
 *.pyo
 *.pyd
-backend/**/__pycache__/
 
-# Variables de entorno / contraseñas
+# Archivos de logs
+*.log
+
+
+# ============================================================
+# VARIABLES DE ENTORNO / CLAVES PRIVADAS
+# ============================================================
+
+# Nunca subir el .env real
 .env
 backend/.env
-*.env
 
-# VS Code opcional
+# Permitir subir el ejemplo
+!backend/.env.example
+!.env.example
+
+
+# ============================================================
+# ARCHIVOS TEMPORALES DEL SISTEMA
+# ============================================================
+
+.DS_Store
+Thumbs.db
+
+
+# ============================================================
+# AUDIO TEMPORAL
+# ============================================================
+
+temp_audio/
+backend/temp_audio/
+
+
+# ============================================================
+# EDITORES
+# ============================================================
+
 .vscode/
+.idea/
 
-# No subir frontend
+
+# ============================================================
+# FRONTEND
+# ============================================================
+
+# No subir frontend si por ahora solo compartirás backend
 Empresa_Constructora/
 
-# Archivos temporales
-*.log
+
+# ============================================================
+# BASE DE DATOS / BACKUPS LOCALES
+# ============================================================
+
+*.sqlite3
+*.db
+*.backup
+*.dump
