@@ -28,7 +28,7 @@ INSERT INTO base_de_datos_empresa (
 VALUES (
     1,
     1,
-    'bd_pinares',
+    'proysi2grup',
     '127.0.0.1',
     5432,
     'postgres',

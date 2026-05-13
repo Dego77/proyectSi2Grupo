@@ -1,14 +1,14 @@
 import os
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 from dotenv import load_dotenv
 
-from database import get_session
+from database_empresa import get_session_empresa
 from models import Usuario
 from utils.email import enviar_correo
 from utils.tokens import generar_token_recuperacion, validar_token_recuperacion
@@ -52,8 +52,17 @@ class RestablecerContrasenaResponse(BaseModel):
 )
 def solicitar_recuperacion(
     datos: SolicitarRecuperacionRequest,
-    session: Session = Depends(get_session),
+    x_empresa_id: int = Header(..., alias="X-Empresa-Id"),
+    session: Session = Depends(get_session_empresa),
 ):
+    """
+    Recuperación de contraseña para usuarios dentro de una empresa.
+
+    Requiere:
+    - Header X-Empresa-Id
+    - email del usuario
+    """
+
     email_normalizado = datos.email.strip().lower()
 
     usuario = session.exec(
@@ -75,7 +84,7 @@ def solicitar_recuperacion(
         "http://localhost:4200/restablecer-contrasena"
     )
 
-    link_recuperacion = f"{reset_password_url}?token={token}"
+    link_recuperacion = f"{reset_password_url}?token={token}&empresa_id={x_empresa_id}"
 
     nombre_usuario = getattr(usuario, "nombres", None) or getattr(
         usuario,
@@ -156,8 +165,17 @@ def verificar_token(token: str):
 )
 def restablecer_contrasena(
     datos: RestablecerContrasenaRequest,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_session_empresa),
 ):
+    """
+    Restablece la contraseña del usuario en la base de datos de la empresa.
+
+    Requiere:
+    - Header X-Empresa-Id
+    - token
+    - nueva_contrasena
+    """
+
     try:
         email = validar_token_recuperacion(datos.token)
     except ValueError as error:
@@ -173,7 +191,7 @@ def restablecer_contrasena(
     if not usuario:
         raise HTTPException(
             status_code=404,
-            detail="Usuario no encontrado."
+            detail="Usuario no encontrado en esta empresa."
         )
 
     usuario.contrasena = datos.nueva_contrasena

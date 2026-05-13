@@ -18,7 +18,6 @@ from utils.tokens import (
 
 
 load_dotenv()
-print("DEBUG_SKIP_EMAIL:", repr(os.getenv("DEBUG_SKIP_EMAIL")))
 
 
 router = APIRouter(
@@ -59,12 +58,6 @@ def solicitar_recuperacion_empresa(
     datos: SolicitarRecuperacionEmpresaRequest,
     session: Session = Depends(get_session),
 ):
-    """
-    La empresa escribe su correo.
-    FastAPI verifica si existe en la tabla empresa.
-    Si existe, genera un token y envía un link de recuperación.
-    """
-
     email_normalizado = datos.email.strip().lower()
 
     empresa = session.exec(
@@ -144,10 +137,6 @@ Sistema Multiempresa
     response_model=VerificarTokenEmpresaResponse
 )
 def verificar_token_empresa(token: str):
-    """
-    Verifica si el token de recuperación de empresa es válido.
-    """
-
     try:
         data = validar_token_recuperacion_empresa(token)
     except ValueError as error:
@@ -171,12 +160,6 @@ def restablecer_contrasena_empresa(
     datos: RestablecerContrasenaEmpresaRequest,
     session: Session = Depends(get_session),
 ):
-    """
-    La empresa envía token + nueva contraseña.
-    FastAPI valida el token.
-    Si es válido, actualiza empresa.contrasena en PostgreSQL.
-    """
-
     try:
         data = validar_token_recuperacion_empresa(datos.token)
     except ValueError as error:

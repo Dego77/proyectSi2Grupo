@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlmodel import Session
 
-from database import get_session
+from database_empresa import get_session_empresa
 from models import Presupuesto, DetallePresupuesto, Material, ActivosFijos
 
 
@@ -17,7 +17,7 @@ router = APIRouter(
 
 
 def redondear(valor: Decimal) -> Decimal:
-    return valor.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return Decimal(str(valor)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 # ============================================================
@@ -64,7 +64,7 @@ class CalculoPresupuestoSimpleResponse(BaseModel):
 @router.post("/calcular-simple", response_model=CalculoPresupuestoSimpleResponse)
 def calcular_presupuesto_simple(
     datos: CalculoPresupuestoSimpleRequest,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_session_empresa),
 ):
     """
     Calcula presupuesto por metro cuadrado.
@@ -73,8 +73,8 @@ def calcular_presupuesto_simple(
     100 m2 x 17 USD = 1700 USD
     1700 USD x 6.96 = 11832 Bs
 
-    Si guardar_en_bd=True, guarda el total en la tabla presupuesto.
-    Como tu modelo actual solo tiene costo_total, se guarda el total en bolivianos.
+    Si guardar_en_bd=True, guarda el total en la tabla presupuesto
+    de la base de datos de la empresa indicada por X-Empresa-Id.
     """
 
     costo_base_usd = datos.area_m2 * datos.precio_m2_usd
@@ -138,7 +138,7 @@ def calcular_presupuesto_simple(
         "impuestos_bob": redondear(impuestos_bob),
         "total_bob": redondear(total_bob),
 
-        "mensaje": "Presupuesto calculado correctamente."
+        "mensaje": "Presupuesto calculado correctamente en la base de datos de la empresa."
     }
 
 
@@ -175,16 +175,14 @@ class CrearPresupuestoMaterialesResponse(BaseModel):
 @router.post("/crear-con-materiales", response_model=CrearPresupuestoMaterialesResponse)
 def crear_presupuesto_con_materiales(
     datos: CrearPresupuestoMaterialesRequest,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_session_empresa),
 ):
     """
-    Crea un presupuesto usando materiales existentes de la tabla material.
+    Crea un presupuesto usando materiales existentes de la base de datos
+    de la empresa indicada por X-Empresa-Id.
 
     Fórmula:
     cantidad x material.precio = subtotal
-
-    El total queda en la moneda en la que guardaste material.precio.
-    En este seed, los precios están en bolivianos.
     """
 
     if not datos.materiales:
@@ -203,10 +201,10 @@ def crear_presupuesto_con_materiales(
         if not material:
             raise HTTPException(
                 status_code=404,
-                detail=f"Material con ID {item.id_material} no encontrado."
+                detail=f"Material con ID {item.id_material} no encontrado en esta empresa."
             )
 
-        precio_unitario = Decimal(material.precio)
+        precio_unitario = Decimal(str(material.precio))
         subtotal = precio_unitario * Decimal(item.cantidad)
 
         total += subtotal
@@ -252,7 +250,7 @@ def crear_presupuesto_con_materiales(
         "id_proyecto": presupuesto.id_proyecto,
         "total": redondear(total),
         "detalles": detalles_respuesta,
-        "mensaje": "Presupuesto con materiales creado correctamente."
+        "mensaje": "Presupuesto con materiales creado correctamente en la base de datos de la empresa."
     }
 
 
@@ -281,17 +279,16 @@ class CalculoActivoResponse(BaseModel):
 @router.post("/calcular-activo", response_model=CalculoActivoResponse)
 def calcular_costo_activo(
     datos: CalculoActivoRequest,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_session_empresa),
 ):
     """
-    Calcula el costo de uso de un activo fijo.
+    Calcula el costo de uso de un activo fijo registrado en la base
+    de datos de la empresa indicada por X-Empresa-Id.
 
     Fórmula:
     depreciación total = valor_compra - valor_residual
     costo por día = depreciación total / vida_util
     costo de uso = costo por día x dias_uso
-
-    En tu modelo actual, asumimos que vida_util está en días.
     """
 
     activo = session.get(ActivosFijos, datos.id_activo)
@@ -299,7 +296,7 @@ def calcular_costo_activo(
     if not activo:
         raise HTTPException(
             status_code=404,
-            detail=f"Activo fijo con ID {datos.id_activo} no encontrado."
+            detail=f"Activo fijo con ID {datos.id_activo} no encontrado en esta empresa."
         )
 
     if activo.vida_util <= 0:
@@ -308,8 +305,8 @@ def calcular_costo_activo(
             detail="La vida útil del activo debe ser mayor a cero."
         )
 
-    valor_compra = Decimal(activo.valor_compra)
-    valor_residual = Decimal(activo.valor_residual)
+    valor_compra = Decimal(str(activo.valor_compra))
+    valor_residual = Decimal(str(activo.valor_residual))
 
     depreciacion_total = valor_compra - valor_residual
     costo_por_dia = depreciacion_total / Decimal(activo.vida_util)
@@ -325,5 +322,5 @@ def calcular_costo_activo(
         "depreciacion_total": redondear(depreciacion_total),
         "costo_por_dia": redondear(costo_por_dia),
         "costo_uso": redondear(costo_uso),
-        "mensaje": "Costo de activo calculado correctamente."
+        "mensaje": "Costo de activo calculado correctamente en la base de datos de la empresa."
     }

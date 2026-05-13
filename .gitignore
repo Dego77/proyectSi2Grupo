@@ -27,10 +27,11 @@ __pycache__/
 # Nunca subir el .env real
 .env
 backend/.env
+*.env
 
-# Permitir subir el ejemplo
-!backend/.env.example
+# Permitir subir ejemplos
 !.env.example
+!backend/.env.example
 
 
 # ============================================================
@@ -73,3 +74,4 @@ Empresa_Constructora/
 *.db
 *.backup
 *.dump
+
