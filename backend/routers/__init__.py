@@ -5,6 +5,7 @@ from .presupuesto_calculo import router as presupuesto_calculo_router
 from .reportes import router as reportes_router
 from .empresa_saas import router as empresa_saas_router
 from .login import router as login_router
+from .casos_uso import routers as casos_uso_routers
 
 from .sistema import routers as sistema_routers
 from .comercial import routers as comercial_routers
@@ -23,6 +24,7 @@ def incluir_routers(app):
         + compras_routers
         + proyectos_routers
         + empleados_routers
+        + casos_uso_routers
     )
 
     for router in todos_los_routers:

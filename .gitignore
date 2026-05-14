@@ -75,3 +75,8 @@ Empresa_Constructora/
 *.backup
 *.dump
 
+
+# Firebase credentials
+firebase-service-account.json
+backend/firebase-service-account.json
+*firebase-service-account*.json

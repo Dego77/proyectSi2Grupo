@@ -9,3 +9,4 @@ faster-whisper
 sqlalchemy
 pydantic
 google-genai
+firebase-admin
