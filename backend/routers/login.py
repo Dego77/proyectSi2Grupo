@@ -10,6 +10,7 @@ from database_empresa import (
     obtener_engine_empresa,
 )
 from models import Empresa, BaseDeDatosEmpresa, Usuario, Rol
+from utils.seguridad_roles import requerir_roles
 from utils.bitacora import registrar_bitacora
 
 
@@ -88,6 +89,7 @@ def registrar_login_empresa_en_bitacora(
         pass
 
 
+#iniciar sesión empresa
 @router.post("/empresa", response_model=LoginEmpresaResponse)
 def login_empresa(
     datos: LoginEmpresaRequest,
@@ -134,6 +136,7 @@ def login_empresa(
     }
 
 
+#iniciar sesión usuario
 @router.post("/usuario", response_model=LoginUsuarioResponse)
 def login_usuario(
     datos: LoginUsuarioRequest,
@@ -188,4 +191,41 @@ def login_usuario(
         "apellido": usuario.apellido,
         "email": usuario.email,
         "rol": rol.rol,
+    }
+    
+class CerrarSesionResponse(BaseModel):
+    mensaje: str
+    id_empresa: int
+    id_usuario: int
+    usuario: str
+    
+@router.post("/cerrar-sesion", response_model=CerrarSesionResponse)
+def cerrar_sesion(
+    x_empresa_id: int = Header(..., alias="X-Empresa-Id"),
+    session: Session = Depends(get_session_empresa),
+    usuario_actual=Depends(requerir_roles("Administrador", "Empleado", "Cliente")),
+):
+    """
+    Cierra la sesión del usuario dentro de una empresa activa.
+
+    Multiempresa:
+    - X-Empresa-Id define la base de datos de la empresa.
+    - X-Usuario-Id identifica al usuario que cierra sesión.
+    """
+
+    usuario = usuario_actual["usuario"]
+
+    registrar_bitacora(
+        session=session,
+        id_usuario=usuario.id_usuarios,
+        modulo="Login Usuario",
+        accion="Cierre de sesión",
+        descripcion=f"El usuario {usuario.nombresusuario} cerró sesión correctamente.",
+    )
+
+    return {
+        "mensaje": "Sesión cerrada correctamente. El cliente debe eliminar los datos de sesión almacenados.",
+        "id_empresa": x_empresa_id,
+        "id_usuario": usuario.id_usuarios,
+        "usuario": usuario.nombresusuario,
     }
