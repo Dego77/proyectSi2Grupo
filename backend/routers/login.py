@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
+from typing import Optional
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 from sqlalchemy import func, or_
@@ -9,7 +10,7 @@ from database_empresa import (
     construir_database_url_empresa,
     obtener_engine_empresa,
 )
-from models import Empresa, BaseDeDatosEmpresa, Usuario, Rol
+from models import Empresa, BaseDeDatosEmpresa, Usuario, Rol, Cliente, Proyecto
 from utils.seguridad_roles import requerir_roles
 from utils.bitacora import registrar_bitacora
 
@@ -47,6 +48,7 @@ class LoginUsuarioResponse(BaseModel):
     apellido: str
     email: str
     rol: str
+    has_active_project: bool = False
 
 
 def registrar_login_empresa_en_bitacora(
@@ -182,6 +184,12 @@ def login_usuario(
         descripcion=f"El usuario {usuario.nombresusuario} inició sesión correctamente.",
     )
 
+    # Verificar dinamicamente si el usuario tiene algún proyecto registrado en Postgres
+    proyecto_activo = session.exec(
+        select(Proyecto).where(Proyecto.id_usuario == usuario.id_usuarios)
+    ).first()
+    tiene_proyecto = proyecto_activo is not None
+
     return {
         "mensaje": "Login de usuario correcto.",
         "id_empresa": x_empresa_id,
@@ -191,6 +199,7 @@ def login_usuario(
         "apellido": usuario.apellido,
         "email": usuario.email,
         "rol": rol.rol,
+        "has_active_project": tiene_proyecto,
     }
     
 class CerrarSesionResponse(BaseModel):
@@ -228,4 +237,119 @@ def cerrar_sesion(
         "id_empresa": x_empresa_id,
         "id_usuario": usuario.id_usuarios,
         "usuario": usuario.nombresusuario,
+    }
+
+
+class RegisterUsuarioRequest(BaseModel):
+    nombres: str = Field(..., min_length=2)
+    apellido: str = Field(..., min_length=2)
+    email: str = Field(..., min_length=5)
+    contrasena: str = Field(..., min_length=4)
+    telefono: Field(..., min_length=7)
+    direccion: str = Field(..., min_length=5)
+
+class RegisterUsuarioResponse(BaseModel):
+    mensaje: str
+    id_empresa: int
+    id_usuario: int
+    usuario: str
+    nombres: str
+    apellido: str
+    email: str
+    rol: str
+
+
+
+@router.post("/registro", response_model=RegisterUsuarioResponse)
+def registrar_usuario(
+    datos: RegisterUsuarioRequest,
+    x_empresa_id: int = Header(..., alias="X-Empresa-Id"),
+    session: Session = Depends(get_session_empresa),
+):
+    """
+    Registra de forma autónoma (auto-registro público) un nuevo usuario de tipo Cliente.
+    """
+    email_normalizado = datos.email.strip().lower()
+
+    # Verificar si el usuario ya existe en esta empresa
+    existe_usuario = session.exec(
+        select(Usuario).where(func.lower(Usuario.email) == email_normalizado)
+    ).first()
+    if existe_usuario:
+        raise HTTPException(
+            status_code=400,
+            detail="El correo electrónico ya se encuentra registrado."
+        )
+
+    # Obtener el rol de Cliente (ID 2 según seed.sql)
+    rol_cliente = session.get(Rol, 2)
+    if not rol_cliente:
+        rol_cliente = session.exec(
+            select(Rol).where(func.lower(Rol.rol) == "cliente")
+        ).first()
+        if not rol_cliente:
+            raise HTTPException(
+                status_code=500,
+                detail="Rol 'Cliente' no configurado en el sistema."
+            )
+
+    # Generar un nombresusuario único
+    nombresusuario = email_normalizado.split("@")[0]
+    nombresusuario_base = nombresusuario
+    contador = 1
+    while session.exec(
+        select(Usuario).where(Usuario.nombresusuario == nombresusuario)
+    ).first():
+        nombresusuario = f"{nombresusuario_base}{contador}"
+        contador += 1
+
+    # Crear el Usuario
+    nuevo_usuario = Usuario(
+        id_rol=rol_cliente.id_rol,
+        nombresusuario=nombresusuario,
+        nombres=datos.nombres,
+        apellido=datos.apellido,
+        email=email_normalizado,
+        contrasena=datos.contrasena,
+        telefono=datos.telefono,
+        direccion=datos.direccion
+    )
+
+    # Crear el Cliente (espejo CRM)
+    nuevo_cliente = Cliente(
+        nombre=f"{datos.nombres} {datos.apellido}".strip(),
+        telefono=datos.telefono or "",
+        direccion=datos.direccion or ""
+    )
+
+    try:
+        session.add(nuevo_usuario)
+        session.add(nuevo_cliente)
+        session.commit()
+        session.refresh(nuevo_usuario)
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error de base de datos al registrar: {str(e)}"
+        )
+
+    # Registrar en bitácora
+    registrar_bitacora(
+        session=session,
+        id_usuario=nuevo_usuario.id_usuarios,
+        modulo="Registro Usuario",
+        accion="Creación de cuenta",
+        descripcion=f"El cliente {nuevo_usuario.nombresusuario} se registró de forma autónoma.",
+    )
+
+    return {
+        "mensaje": "Usuario registrado correctamente.",
+        "id_empresa": x_empresa_id,
+        "id_usuario": nuevo_usuario.id_usuarios,
+        "usuario": nuevo_usuario.nombresusuario,
+        "nombres": nuevo_usuario.nombres,
+        "apellido": nuevo_usuario.apellido,
+        "email": nuevo_usuario.email,
+        "rol": rol_cliente.rol
     }
