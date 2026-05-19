@@ -159,13 +159,13 @@ def login_usuario(
     if not usuario:
         raise HTTPException(
             status_code=401,
-            detail="Credenciales de usuario incorrectas."
+            detail="Error: El usuario no esta registrado en el sistema"
         )
 
     if usuario.contrasena != datos.contrasena:
         raise HTTPException(
             status_code=401,
-            detail="Credenciales de usuario incorrectas."
+            detail="Error: La contraseña es incorrecta"
         )
 
     rol = session.get(Rol, usuario.id_rol)
