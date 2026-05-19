@@ -186,7 +186,7 @@ def login_usuario(
 
     # Verificar dinamicamente si el usuario tiene algún proyecto registrado en Postgres
     proyecto_activo = session.exec(
-        select(Proyecto).where(Proyecto.id_usuario == usuario.id_usuarios)
+        select(Proyecto).where(Proyecto.id_usuarios == usuario.id_usuarios)
     ).first()
     tiene_proyecto = proyecto_activo is not None
 
@@ -245,7 +245,7 @@ class RegisterUsuarioRequest(BaseModel):
     apellido: str = Field(..., min_length=2)
     email: str = Field(..., min_length=5)
     contrasena: str = Field(..., min_length=4)
-    telefono:str= Field(..., min_length=7)
+    telefono: str= Field(..., min_length=7)
     direccion: str = Field(..., min_length=5)
 
 class RegisterUsuarioResponse(BaseModel):
