@@ -6,6 +6,7 @@ from .reportes import router as reportes_router
 from .empresa_saas import router as empresa_saas_router
 from .login import router as login_router
 from .casos_uso import routers as casos_uso_routers
+from .backup_restore import router as backup_restore_router
 
 from .sistema import routers as sistema_routers
 from .comercial import routers as comercial_routers
@@ -17,7 +18,7 @@ from .empleados import routers as empleados_routers
 
 def incluir_routers(app):
     todos_los_routers = (
-        [auth_router, auth_empresa_router, ia_router, presupuesto_calculo_router, reportes_router, empresa_saas_router, login_router]
+        [auth_router, auth_empresa_router, ia_router, presupuesto_calculo_router, reportes_router, empresa_saas_router, login_router, backup_restore_router]
         + sistema_routers
         + comercial_routers
         + financiero_routers

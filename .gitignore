@@ -72,6 +72,12 @@ Empresa_Constructora/
 
 *.sqlite3
 *.db
+# Backups generados por el sistema
+backups/
+backend/backups/
+backend/backups/*.sql
+backend/backups/*.zip
+backend/backups/*.log
 *.backup
 *.dump
 
