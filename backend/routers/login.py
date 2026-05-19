@@ -245,7 +245,7 @@ class RegisterUsuarioRequest(BaseModel):
     apellido: str = Field(..., min_length=2)
     email: str = Field(..., min_length=5)
     contrasena: str = Field(..., min_length=4)
-    telefono: Field(..., min_length=7)
+    telefono:str= Field(..., min_length=7)
     direccion: str = Field(..., min_length=5)
 
 class RegisterUsuarioResponse(BaseModel):
